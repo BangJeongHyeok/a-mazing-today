@@ -60,6 +60,73 @@ export function generateMaze(size, seed) {
   return cells
 }
 
+export function solveMazePath(maze) {
+  if (!maze || maze.length === 0 || !maze[0] || maze[0].length === 0) {
+    return []
+  }
+
+  const size = maze.length
+  const visited = Array.from({ length: size }, () => Array(size).fill(false))
+  const parent = Array.from({ length: size }, () => Array(size).fill(null))
+  const queue = [{ row: 0, col: 0 }]
+  visited[0][0] = true
+
+  const directions = [
+    { key: 'top', deltaRow: -1, deltaCol: 0 },
+    { key: 'right', deltaRow: 0, deltaCol: 1 },
+    { key: 'bottom', deltaRow: 1, deltaCol: 0 },
+    { key: 'left', deltaRow: 0, deltaCol: -1 },
+  ]
+
+  while (queue.length) {
+    const current = queue.shift()
+    const { row, col } = current
+
+    if (row === size - 1 && col === size - 1) {
+      break
+    }
+
+    const cell = maze[row][col]
+
+    directions.forEach(({ key, deltaRow, deltaCol }) => {
+      if (cell.walls[key]) {
+        return
+      }
+
+      const nextRow = row + deltaRow
+      const nextCol = col + deltaCol
+
+      if (
+        nextRow < 0 ||
+        nextCol < 0 ||
+        nextRow >= size ||
+        nextCol >= size ||
+        visited[nextRow][nextCol]
+      ) {
+        return
+      }
+
+      visited[nextRow][nextCol] = true
+      parent[nextRow][nextCol] = current
+      queue.push({ row: nextRow, col: nextCol })
+    })
+  }
+
+  if (!visited[size - 1][size - 1]) {
+    return []
+  }
+
+  const path = []
+  let cursor = { row: size - 1, col: size - 1 }
+
+  while (cursor) {
+    path.push({ row: cursor.row, col: cursor.col })
+    cursor = parent[cursor.row][cursor.col]
+  }
+
+  return path.reverse()
+}
+
 function removeWalls(current, nextCell, direction) {
   if (direction === 'top') {
     current.walls.top = false
