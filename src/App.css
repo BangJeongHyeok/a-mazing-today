@@ -203,6 +203,18 @@ button.ghost:hover {
   text-align: center;
 }
 
+.maze-actions {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.toggle-solution.active {
+  background: rgba(250, 204, 21, 0.2);
+  border-color: rgba(202, 138, 4, 0.5);
+  color: #92400e;
+}
+
 .maze-grid {
   display: grid;
   width: min(85vw, 640px);
@@ -229,6 +241,14 @@ button.ghost:hover {
 
 .maze-cell.current {
   background: #bfdbfe;
+}
+
+.maze-cell.solution::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(250, 204, 21, 0.35);
+  pointer-events: none;
 }
 
 .maze-cell.current::after {
@@ -284,6 +304,10 @@ button.ghost:hover {
 
 .legend-item.current {
   background: rgba(59, 130, 246, 0.2);
+}
+
+.legend-item.solution {
+  background: rgba(250, 204, 21, 0.35);
 }
 
 .controls-hint {

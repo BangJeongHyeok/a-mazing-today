@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { generateDailyMaze } from './utils/maze'
+import { generateDailyMaze, solveMazePath } from './utils/maze'
 import { buildDailyMockLeaderboard, insertLeaderboardEntry } from './utils/leaderboard'
 import './App.css'
 
@@ -85,7 +85,7 @@ function Leaderboard({ title, entries, highlight }) {
   )
 }
 
-function MazeBoard({ maze, position, size }) {
+function MazeBoard({ maze, position, size, solutionCells, showSolution }) {
   const wallColor = '#1f2937'
   const pathColor = '#e5e7eb'
 
@@ -102,11 +102,19 @@ function MazeBoard({ maze, position, size }) {
           const isStart = cell.row === 0 && cell.col === 0
           const isFinish = cell.row === size - 1 && cell.col === size - 1
           const isCurrent = cell.row === position.row && cell.col === position.col
+          const cellKey = `${cell.row}-${cell.col}`
+          const isSolutionCell = showSolution && solutionCells.has(cellKey)
 
           return (
             <div
               key={`${cell.row}-${cell.col}`}
-              className={['maze-cell', isStart ? 'start' : '', isFinish ? 'finish' : '', isCurrent ? 'current' : '']
+              className={[
+                'maze-cell',
+                isStart ? 'start' : '',
+                isFinish ? 'finish' : '',
+                isCurrent ? 'current' : '',
+                isSolutionCell ? 'solution' : '',
+              ]
                 .filter(Boolean)
                 .join(' ')}
               style={{
@@ -142,7 +150,14 @@ function App() {
   const [elapsedMs, setElapsedMs] = useState(0)
   const [leaderboard, setLeaderboard] = useState(() => buildDailyMockLeaderboard(dailyKey))
   const [playerResult, setPlayerResult] = useState(null)
+  const [showSolution, setShowSolution] = useState(false)
   const startTimeRef = useRef(null)
+
+  const solutionPath = useMemo(() => solveMazePath(maze), [maze])
+  const solutionCells = useMemo(
+    () => new Set(solutionPath.map((cell) => `${cell.row}-${cell.col}`)),
+    [solutionPath],
+  )
 
   useEffect(() => {
     setMaze(generateDailyMaze(MAZE_SIZE, dailyKey))
@@ -150,6 +165,7 @@ function App() {
     setPosition({ row: 0, col: 0 })
     setElapsedMs(0)
     setPlayerResult(null)
+    setShowSolution(false)
     startTimeRef.current = null
     setView('landing')
   }, [dailyKey])
@@ -237,6 +253,7 @@ function App() {
     setElapsedMs(0)
     setView('playing')
     startTimeRef.current = Date.now()
+    setShowSolution(false)
   }
 
   const handleReturnHome = () => {
@@ -244,6 +261,7 @@ function App() {
     setElapsedMs(0)
     startTimeRef.current = null
     setView('landing')
+    setShowSolution(false)
   }
 
   return (
@@ -309,11 +327,27 @@ function App() {
           </header>
 
           <section className="card maze-panel">
-            <MazeBoard maze={maze} position={position} size={MAZE_SIZE} />
+            <div className="maze-actions">
+              <button
+                type="button"
+                className={['ghost', 'toggle-solution', showSolution ? 'active' : ''].filter(Boolean).join(' ')}
+                onClick={() => setShowSolution((prev) => !prev)}
+              >
+                {showSolution ? 'Hide solution path' : 'Show solution path'}
+              </button>
+            </div>
+            <MazeBoard
+              maze={maze}
+              position={position}
+              size={MAZE_SIZE}
+              solutionCells={solutionCells}
+              showSolution={showSolution}
+            />
             <div className="legend">
               <span className="legend-item start">Start</span>
               <span className="legend-item finish">Goal</span>
               <span className="legend-item current">You</span>
+              {showSolution ? <span className="legend-item solution">Path preview</span> : null}
             </div>
             <p className="controls-hint">Keyboard: ↑ ↓ ← →</p>
           </section>
