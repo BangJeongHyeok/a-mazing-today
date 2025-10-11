@@ -11,10 +11,10 @@ export function generateMaze(size, seed) {
       row,
       col,
       walls: {
-        top: row === 0,
-        right: col === size - 1,
-        bottom: row === size - 1,
-        left: col === 0,
+        top: true,
+        right: true,
+        bottom: true,
+        left: true,
       },
     })),
   )
@@ -52,8 +52,8 @@ export function generateMaze(size, seed) {
 
     const { direction, cell: nextCell } = neighbors[Math.floor(random() * neighbors.length)]
 
-    removeWalls(current, nextCell, direction)
     visited[nextCell.row][nextCell.col] = true
+    removeWalls(current, nextCell, direction)
     stack.push(nextCell)
   }
 
