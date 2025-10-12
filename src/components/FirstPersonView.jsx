@@ -1,270 +1,136 @@
 import { useMemo } from 'react'
-import { DIRECTION_DELTAS, rotateLeft, rotateRight } from '../utils/directions'
+import { castRay, normalizeAngle } from '../utils/movement'
 
-const LAYER_RECTS = [
-  { left: 64, right: 536, top: 36, bottom: 364 },
-  { left: 140, right: 460, top: 88, bottom: 312 },
-  { left: 204, right: 396, top: 132, bottom: 268 },
-  { left: 244, right: 356, top: 160, bottom: 240 },
-]
-
-const TRANSITION_RECTS = [...LAYER_RECTS, { left: 292, right: 308, top: 192, bottom: 208 }]
-
-const LEFT_WALL_SHADES = ['#1f2a44', '#212f4d', '#233357', '#253861']
-const RIGHT_WALL_SHADES = ['#16203a', '#182444', '#1b284d', '#1d2c56']
-const FRONT_WALL_SHADES = ['#2f3d5b', '#283552', '#212d48', '#1c2640']
-const FLOOR_SHADES = ['#8e9baf', '#7f8ca0', '#707d92', '#646f82']
-const CEILING_SHADES = ['#0b1221', '#0c1423', '#0d1625', '#0e1827']
-const OUTLINE_COLOR = 'rgba(148, 163, 184, 0.45)'
+const VIEW_WIDTH = 600
+const VIEW_HEIGHT = 400
+const FIELD_OF_VIEW = Math.PI / 3
+const NUM_RAYS = 160
+const VERTICAL_SHADES = ['#1d2a45', '#22304d', '#263555', '#2b3b5d', '#314266']
+const HORIZONTAL_SHADES = ['#141d31', '#182239', '#1d2841', '#222e49', '#283452']
 const FLAG_COLOR = '#facc15'
 
-const DIRECTION_LABELS = {
-  top: 'North',
-  right: 'East',
-  bottom: 'South',
-  left: 'West',
+function wrapAngle(angle) {
+  return Math.atan2(Math.sin(angle), Math.cos(angle))
 }
 
-function FirstPersonView({ maze, position, facing }) {
-  const size = maze.length
-
-  const layers = useMemo(() => {
-    if (!maze.length) {
-      return []
-    }
-
-    const results = []
-    const maxDepth = LAYER_RECTS.length
-    const leftDir = rotateLeft(facing)
-    const rightDir = rotateRight(facing)
-
-    for (let depth = 0; depth < maxDepth; depth += 1) {
-      const [dRow, dCol] = DIRECTION_DELTAS[facing]
-      const targetRow = position.row + dRow * depth
-      const targetCol = position.col + dCol * depth
-
-      if (targetRow < 0 || targetRow >= size || targetCol < 0 || targetCol >= size) {
-        break
-      }
-
-      const cell = maze[targetRow]?.[targetCol]
-      if (!cell) {
-        break
-      }
-
-      const layer = {
-        depth,
-        cell,
-        frontWall: Boolean(cell.walls[facing]),
-        leftWall: Boolean(cell.walls[leftDir]),
-        rightWall: Boolean(cell.walls[rightDir]),
-        position: { row: targetRow, col: targetCol },
-        isFinish: targetRow === size - 1 && targetCol === size - 1,
-      }
-
-      results.push(layer)
-
-      if (layer.frontWall) {
-        break
-      }
-    }
-
-    return results
-  }, [maze, position, facing, size])
-
-  const shapes = []
-  for (let index = layers.length - 1; index >= 0; index -= 1) {
-    const layer = layers[index]
-    const rect = LAYER_RECTS[layer.depth]
-    const nextRect = TRANSITION_RECTS[layer.depth + 1]
-    const shadeIndex = Math.min(layer.depth, LEFT_WALL_SHADES.length - 1)
-
-    if (nextRect) {
-      const floorPoints = [
-        `${rect.left},${rect.bottom}`,
-        `${rect.right},${rect.bottom}`,
-        `${nextRect.right},${nextRect.bottom}`,
-        `${nextRect.left},${nextRect.bottom}`,
-      ].join(' ')
-      shapes.push(
-        <polygon
-          key={`floor-${layer.depth}`}
-          points={floorPoints}
-          fill={FLOOR_SHADES[Math.min(layer.depth, FLOOR_SHADES.length - 1)]}
-        />
-      )
-
-      const ceilingPoints = [
-        `${rect.left},${rect.top}`,
-        `${nextRect.left},${nextRect.top}`,
-        `${nextRect.right},${nextRect.top}`,
-        `${rect.right},${rect.top}`,
-      ].join(' ')
-      shapes.push(
-        <polygon
-          key={`ceiling-${layer.depth}`}
-          points={ceilingPoints}
-          fill={CEILING_SHADES[Math.min(layer.depth, CEILING_SHADES.length - 1)]}
-        />
-      )
-    }
-
-    if (layer.leftWall) {
-      const leftWallPoints = [
-        `${rect.left},${rect.top}`,
-        `${nextRect.left},${nextRect.top}`,
-        `${nextRect.left},${nextRect.bottom}`,
-        `${rect.left},${rect.bottom}`,
-      ].join(' ')
-      shapes.push(
-        <polygon
-          key={`left-wall-${layer.depth}`}
-          points={leftWallPoints}
-          fill={LEFT_WALL_SHADES[shadeIndex]}
-          stroke="#0f172a"
-          strokeWidth={1.2}
-        />
-      )
-    } else {
-      shapes.push(
-        <line
-          key={`left-outline-${layer.depth}`}
-          x1={rect.left}
-          y1={rect.top}
-          x2={rect.left}
-          y2={rect.bottom}
-          stroke={OUTLINE_COLOR}
-          strokeWidth={1}
-        />
-      )
-    }
-
-    if (layer.rightWall) {
-      const rightWallPoints = [
-        `${rect.right},${rect.top}`,
-        `${rect.right},${rect.bottom}`,
-        `${nextRect.right},${nextRect.bottom}`,
-        `${nextRect.right},${nextRect.top}`,
-      ].join(' ')
-      shapes.push(
-        <polygon
-          key={`right-wall-${layer.depth}`}
-          points={rightWallPoints}
-          fill={RIGHT_WALL_SHADES[shadeIndex]}
-          stroke="#0f172a"
-          strokeWidth={1.2}
-        />
-      )
-    } else {
-      shapes.push(
-        <line
-          key={`right-outline-${layer.depth}`}
-          x1={rect.right}
-          y1={rect.top}
-          x2={rect.right}
-          y2={rect.bottom}
-          stroke={OUTLINE_COLOR}
-          strokeWidth={1}
-        />
-      )
-    }
-
-    if (layer.frontWall) {
-      shapes.push(
-        <rect
-          key={`front-wall-${layer.depth}`}
-          x={rect.left}
-          y={rect.top}
-          width={rect.right - rect.left}
-          height={rect.bottom - rect.top}
-          fill={FRONT_WALL_SHADES[Math.min(layer.depth, FRONT_WALL_SHADES.length - 1)]}
-          stroke="#0f172a"
-          strokeWidth={1.4}
-        />
-      )
-    } else {
-      shapes.push(
-        <line
-          key={`vanish-left-${layer.depth}`}
-          x1={rect.left}
-          y1={rect.top}
-          x2={nextRect.left}
-          y2={nextRect.top}
-          stroke={OUTLINE_COLOR}
-          strokeWidth={1}
-        />
-      )
-      shapes.push(
-        <line
-          key={`vanish-right-${layer.depth}`}
-          x1={rect.right}
-          y1={rect.top}
-          x2={nextRect.right}
-          y2={nextRect.top}
-          stroke={OUTLINE_COLOR}
-          strokeWidth={1}
-        />
-      )
-      shapes.push(
-        <line
-          key={`vanish-floor-${layer.depth}`}
-          x1={rect.left}
-          y1={rect.bottom}
-          x2={nextRect.left}
-          y2={nextRect.bottom}
-          stroke={OUTLINE_COLOR}
-          strokeWidth={1}
-        />
-      )
-      shapes.push(
-        <line
-          key={`vanish-floor-right-${layer.depth}`}
-          x1={rect.right}
-          y1={rect.bottom}
-          x2={nextRect.right}
-          y2={nextRect.bottom}
-          stroke={OUTLINE_COLOR}
-          strokeWidth={1}
-        />
-      )
-    }
-
-    if (layer.isFinish && !layer.frontWall) {
-      const flagRect = nextRect || rect
-      const poleX = (flagRect.left + flagRect.right) / 2
-      const poleBottom = flagRect.bottom - (flagRect.bottom - flagRect.top) * 0.1
-      const poleTop = poleBottom - (flagRect.bottom - flagRect.top) * 0.5
-      const flagWidth = (flagRect.right - flagRect.left) * 0.35
-
-      shapes.push(
-        <g key={`goal-flag-${layer.depth}`}>
-          <line x1={poleX} y1={poleBottom} x2={poleX} y2={poleTop} stroke={FLAG_COLOR} strokeWidth={Math.max(2, 5 - layer.depth)} />
-          <polygon
-            points={`${poleX},${poleTop} ${poleX + flagWidth},${poleTop + (flagRect.bottom - flagRect.top) * 0.12} ${poleX},${poleTop + (flagRect.bottom - flagRect.top) * 0.24}`}
-            fill={FLAG_COLOR}
-          />
-        </g>
-      )
-    }
+function describeHeading(angle) {
+  const compassLabels = ['East', 'South-East', 'South', 'South-West', 'West', 'North-West', 'North', 'North-East']
+  const normalized = normalizeAngle(angle)
+  const degrees = (normalized * 180) / Math.PI
+  const index = Math.round(degrees / 45) % compassLabels.length
+  return {
+    degrees: Math.round((degrees + 360) % 360),
+    label: compassLabels[index],
   }
+}
 
-  const directionLabel = DIRECTION_LABELS[facing] ?? 'Forward'
+function FirstPersonView({ maze, player }) {
+  const size = maze.length
+  const { rays, goalIndex } = useMemo(() => {
+    if (!maze.length) {
+      return { rays: [], goalIndex: null }
+    }
+
+    const maxDistance = Math.max(1, maze.length * Math.SQRT2)
+    const halfFov = FIELD_OF_VIEW / 2
+    const rayData = []
+    let goalLeft = null
+    let goalRight = null
+
+    for (let i = 0; i < NUM_RAYS; i += 1) {
+      const ratio = NUM_RAYS === 1 ? 0 : i / (NUM_RAYS - 1)
+      const rayAngle = player.angle - halfFov + ratio * FIELD_OF_VIEW
+      const sample = castRay(maze, player, rayAngle, maxDistance)
+      const angleDelta = wrapAngle(rayAngle - player.angle)
+      rayData.push({
+        index: i,
+        distance: sample.distance,
+        orientation: sample.orientation,
+        angleDelta,
+        goalDistance: sample.goalVisible ? sample.goalDistance : null,
+      })
+
+      if (sample.goalVisible) {
+        if (goalLeft === null) {
+          goalLeft = i
+        }
+        goalRight = i
+      }
+    }
+
+    const goalIndexValue = goalLeft !== null ? Math.round((goalLeft + goalRight) / 2) : null
+    return { rays: rayData, goalIndex: goalIndexValue }
+  }, [maze, player.angle, player.x, player.y])
+
+  const heading = describeHeading(player.angle)
+  const columnWidth = VIEW_WIDTH / NUM_RAYS
+  const maxDepthReference = Math.max(4, size)
+
+  const wallColumns = rays.map((ray) => {
+    const correctedDistance = Math.max(0.0001, ray.distance * Math.cos(ray.angleDelta))
+    const wallHeight = Math.min(VIEW_HEIGHT * 1.3, (VIEW_HEIGHT * 0.9) / correctedDistance)
+    const top = (VIEW_HEIGHT - wallHeight) / 2
+    const palette = ray.orientation === 'vertical' ? VERTICAL_SHADES : HORIZONTAL_SHADES
+    const depthRatio = Math.min(1, correctedDistance / maxDepthReference)
+    const shadeIndex = Math.min(palette.length - 1, Math.floor(depthRatio * palette.length))
+    const fill = palette[shadeIndex]
+
+    return (
+      <rect
+        key={`wall-${ray.index}`}
+        x={ray.index * columnWidth}
+        y={top}
+        width={columnWidth + 1}
+        height={wallHeight}
+        fill={fill}
+      />
+    )
+  })
+
+  let goalElements = null
+  if (goalIndex !== null && rays[goalIndex] && rays[goalIndex].goalDistance) {
+    const ray = rays[goalIndex]
+    const goalDistanceCorrected = Math.max(0.0001, ray.goalDistance * Math.cos(ray.angleDelta))
+    const flagHeight = Math.min(VIEW_HEIGHT * 0.4, Math.max(22, (VIEW_HEIGHT * 0.35) / goalDistanceCorrected))
+    const flagBottom = VIEW_HEIGHT * 0.7
+    const flagTop = flagBottom - flagHeight
+    const columnCenter = goalIndex * columnWidth + columnWidth / 2
+    const poleHeight = flagHeight + 18
+    const poleTop = flagTop - 6
+    const poleBottom = poleTop + poleHeight
+    const flagWidth = Math.max(columnWidth * 0.8, flagHeight * 0.45)
+
+    goalElements = (
+      <g key="goal-flag" className="goal-flag">
+        <line
+          x1={columnCenter}
+          y1={poleTop}
+          x2={columnCenter}
+          y2={poleBottom}
+          stroke={FLAG_COLOR}
+          strokeWidth={3}
+          strokeLinecap="round"
+        />
+        <polygon
+          points={`${columnCenter},${flagTop} ${columnCenter + flagWidth},${flagTop + flagHeight * 0.25} ${columnCenter},${flagTop + flagHeight * 0.5}`}
+          fill={FLAG_COLOR}
+          opacity={0.9}
+        />
+      </g>
+    )
+  }
 
   return (
     <div className="first-person-view">
-      <svg
-        className="first-person-canvas"
-        viewBox="0 0 600 400"
-        role="img"
-        aria-label={`First-person maze view facing ${directionLabel}`}
-      >
-        <rect x="0" y="0" width="600" height="200" fill="#0f172a" />
-        <rect x="0" y="200" width="600" height="200" fill="#111827" />
-        {shapes}
+      <svg className="first-person-canvas" viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`} role="img" aria-label="First-person maze view">
+        <rect x="0" y="0" width={VIEW_WIDTH} height={VIEW_HEIGHT / 2} fill="#0f172a" />
+        <rect x="0" y={VIEW_HEIGHT / 2} width={VIEW_WIDTH} height={VIEW_HEIGHT / 2} fill="#111827" />
+        {wallColumns}
+        {goalElements}
       </svg>
       <div className="first-person-overlay">
         <span className="first-person-heading">First-person view</span>
-        <span className="first-person-facing">Facing {directionLabel}</span>
+        <span className="first-person-facing">Heading {String(heading.degrees).padStart(3, '0')}° · {heading.label}</span>
       </div>
     </div>
   )

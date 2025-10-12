@@ -527,8 +527,8 @@ button.ghost:hover {
 }
 
 .maze-grid.mini-maze-grid {
-  width: 200px;
-  height: 200px;
+  width: 320px;
+  height: 320px;
   margin: 0;
   border-radius: 14px;
   box-shadow: 0 8px 18px rgba(15, 23, 42, 0.18);
@@ -666,8 +666,8 @@ button.ghost:hover {
   }
 
   .maze-grid.mini-maze-grid {
-    width: min(180px, 45vw);
-    height: min(180px, 45vw);
+    width: min(260px, 60vw);
+    height: min(260px, 60vw);
   }
 }
 
@@ -692,8 +692,8 @@ button.ghost:hover {
   }
 
   .maze-grid.mini-maze-grid {
-    width: min(160px, 60vw);
-    height: min(160px, 60vw);
+    width: min(220px, 70vw);
+    height: min(220px, 70vw);
   }
 }
 

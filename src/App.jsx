@@ -1,12 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { generateDailyMaze, solveMazePath } from './utils/maze'
 import { buildDailyMockLeaderboard, insertLeaderboardEntry } from './utils/leaderboard'
-import { DIRECTION_DELTAS, getOppositeDirection, rotateLeft, rotateRight } from './utils/directions'
 import FirstPersonView from './components/FirstPersonView'
+import { movePlayerPosition, normalizeAngle } from './utils/movement'
 import './App.css'
 
 const MAZE_SIZE = 40
 const CONTROL_KEYS = new Set(['ArrowUp', 'ArrowRight', 'ArrowDown', 'ArrowLeft'])
+const MOVE_SPEED = 1 // cells per second
+const TURN_SPEED = Math.PI // radians per second (~180°)
+
+function createInitialPlayerState() {
+  return { x: 0.5, y: 0.5, angle: 0 }
+}
 
 function formatDuration(ms) {
   if (!ms || ms < 0) {
@@ -138,15 +144,13 @@ function App() {
   const [view, setView] = useState('landing')
   const [maze, setMaze] = useState(() => generateDailyMaze(MAZE_SIZE, dailyKey))
   const [position, setPosition] = useState({ row: 0, col: 0 })
-  const [facing, setFacing] = useState('right')
+  const [player, setPlayer] = useState(() => createInitialPlayerState())
   const [elapsedMs, setElapsedMs] = useState(0)
   const [leaderboard, setLeaderboard] = useState(() => buildDailyMockLeaderboard(dailyKey))
   const [playerResult, setPlayerResult] = useState(null)
   const [showSolution, setShowSolution] = useState(false)
   const startTimeRef = useRef(null)
-  const facingRef = useRef('right')
   const pressedKeysRef = useRef(new Set())
-  const keyCooldownRef = useRef({})
 
   const solutionPath = useMemo(() => solveMazePath(maze), [maze])
   const solutionCells = useMemo(
@@ -155,21 +159,16 @@ function App() {
   )
 
   useEffect(() => {
-    facingRef.current = facing
-  }, [facing])
-
-  useEffect(() => {
     setMaze(generateDailyMaze(MAZE_SIZE, dailyKey))
     setLeaderboard(buildDailyMockLeaderboard(dailyKey))
     setPosition({ row: 0, col: 0 })
-    setFacing('right')
+    const initialPlayer = createInitialPlayerState()
+    setPlayer(initialPlayer)
     setElapsedMs(0)
     setPlayerResult(null)
     setShowSolution(false)
     startTimeRef.current = null
-    facingRef.current = 'right'
     pressedKeysRef.current.clear()
-    keyCooldownRef.current = {}
     setView('landing')
   }, [dailyKey])
 
@@ -216,80 +215,13 @@ function App() {
     setPlayerResult({ ...newEntry, rank: computedRank })
     setView((prev) => (prev === 'playing' ? 'complete' : prev))
     pressedKeysRef.current.clear()
-    keyCooldownRef.current = {}
   }, [nickname, view])
-
-  const attemptMove = useCallback(
-    (direction) => {
-      if (view !== 'playing') {
-        return
-      }
-
-      let nextPosition = null
-      setPosition((prevPosition) => {
-        const cell = maze[prevPosition.row]?.[prevPosition.col]
-        if (!cell || cell.walls[direction]) {
-          return prevPosition
-        }
-
-        const [deltaRow, deltaCol] = DIRECTION_DELTAS[direction]
-        const nextRow = prevPosition.row + deltaRow
-        const nextCol = prevPosition.col + deltaCol
-
-        if (nextRow < 0 || nextRow >= MAZE_SIZE || nextCol < 0 || nextCol >= MAZE_SIZE) {
-          return prevPosition
-        }
-
-        nextPosition = { row: nextRow, col: nextCol }
-        return nextPosition
-      })
-
-      if (nextPosition && nextPosition.row === MAZE_SIZE - 1 && nextPosition.col === MAZE_SIZE - 1) {
-        completeRun()
-      }
-    },
-    [completeRun, maze, view],
-  )
-
-  const performAction = useCallback(
-    (key) => {
-      if (view !== 'playing') {
-        return
-      }
-
-      const currentFacing = facingRef.current
-
-      if (key === 'ArrowUp') {
-        attemptMove(currentFacing)
-      } else if (key === 'ArrowDown') {
-        attemptMove(getOppositeDirection(currentFacing))
-      } else if (key === 'ArrowLeft') {
-        setFacing((prev) => {
-          const next = rotateLeft(prev)
-          facingRef.current = next
-          return next
-        })
-      } else if (key === 'ArrowRight') {
-        setFacing((prev) => {
-          const next = rotateRight(prev)
-          facingRef.current = next
-          return next
-        })
-      }
-    },
-    [attemptMove, view],
-  )
 
   useEffect(() => {
     if (view !== 'playing') {
       pressedKeysRef.current.clear()
-      keyCooldownRef.current = {}
       return undefined
     }
-
-    const pressedKeys = pressedKeysRef.current
-    const keyCooldowns = keyCooldownRef.current
-    const repeatIntervalMs = 110
 
     function handleKeyDown(event) {
       if (!CONTROL_KEYS.has(event.key)) {
@@ -297,33 +229,17 @@ function App() {
       }
 
       event.preventDefault()
-
-      if (!pressedKeys.has(event.key)) {
-        pressedKeys.add(event.key)
-        performAction(event.key)
-        keyCooldowns[event.key] = performance.now() + repeatIntervalMs
-      }
+      pressedKeysRef.current.add(event.key)
     }
 
     function handleKeyUp(event) {
-      if (pressedKeys.delete(event.key)) {
-        delete keyCooldowns[event.key]
+      if (!CONTROL_KEYS.has(event.key)) {
+        return
       }
+
+      event.preventDefault()
+      pressedKeysRef.current.delete(event.key)
     }
-
-    let animationFrameId = null
-
-    const tick = (timestamp) => {
-      pressedKeys.forEach((key) => {
-        if (timestamp >= (keyCooldowns[key] ?? 0)) {
-          performAction(key)
-          keyCooldowns[key] = timestamp + repeatIntervalMs
-        }
-      })
-      animationFrameId = window.requestAnimationFrame(tick)
-    }
-
-    animationFrameId = window.requestAnimationFrame(tick)
 
     window.addEventListener('keydown', handleKeyDown)
     window.addEventListener('keyup', handleKeyUp)
@@ -331,13 +247,74 @@ function App() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
+      pressedKeysRef.current.clear()
+    }
+  }, [view])
+
+  useEffect(() => {
+    if (view !== 'playing') {
+      return undefined
+    }
+
+    let animationFrameId = null
+    let lastTimestamp = performance.now()
+
+    const step = (timestamp) => {
+      const deltaSeconds = Math.min((timestamp - lastTimestamp) / 1000, 0.12)
+      lastTimestamp = timestamp
+
+      setPlayer((prev) => {
+        if (!maze.length) {
+          return prev
+        }
+
+        const pressed = pressedKeysRef.current
+        const forward = (pressed.has('ArrowUp') ? 1 : 0) - (pressed.has('ArrowDown') ? 1 : 0)
+        const turn = (pressed.has('ArrowRight') ? 1 : 0) - (pressed.has('ArrowLeft') ? 1 : 0)
+
+        if (forward === 0 && turn === 0) {
+          return prev
+        }
+
+        const nextAngle = normalizeAngle(prev.angle + turn * TURN_SPEED * deltaSeconds)
+        let nextPosition = prev
+
+        if (forward !== 0) {
+          const moveAmount = forward * MOVE_SPEED * deltaSeconds
+          const deltaX = Math.cos(nextAngle) * moveAmount
+          const deltaY = Math.sin(nextAngle) * moveAmount
+          nextPosition = movePlayerPosition(prev, deltaX, deltaY, maze)
+        }
+
+        const prevRow = Math.floor(prev.y)
+        const prevCol = Math.floor(prev.x)
+        const newRow = Math.min(MAZE_SIZE - 1, Math.max(0, Math.floor(nextPosition.y)))
+        const newCol = Math.min(MAZE_SIZE - 1, Math.max(0, Math.floor(nextPosition.x)))
+
+        if (newRow !== prevRow || newCol !== prevCol) {
+          setPosition({ row: newRow, col: newCol })
+          if (newRow === MAZE_SIZE - 1 && newCol === MAZE_SIZE - 1) {
+            completeRun()
+          }
+        }
+
+        return { x: nextPosition.x, y: nextPosition.y, angle: nextAngle }
+      })
+
+      animationFrameId = window.requestAnimationFrame(step)
+    }
+
+    animationFrameId = window.requestAnimationFrame((timestamp) => {
+      lastTimestamp = timestamp
+      step(timestamp)
+    })
+
+    return () => {
       if (animationFrameId) {
         window.cancelAnimationFrame(animationFrameId)
       }
-      pressedKeys.clear()
-      keyCooldownRef.current = {}
     }
-  }, [performAction, view])
+  }, [completeRun, maze, view])
 
   const handleStartGame = (event) => {
     if (event) {
@@ -350,26 +327,24 @@ function App() {
 
     setMaze(generateDailyMaze(MAZE_SIZE, dailyKey))
     setPosition({ row: 0, col: 0 })
-    setFacing('right')
+    const initialPlayer = createInitialPlayerState()
+    setPlayer(initialPlayer)
     setElapsedMs(0)
     setView('playing')
     startTimeRef.current = Date.now()
     setShowSolution(false)
-    facingRef.current = 'right'
     pressedKeysRef.current.clear()
-    keyCooldownRef.current = {}
   }
 
   const handleReturnHome = () => {
     setPosition({ row: 0, col: 0 })
+    const initialPlayer = createInitialPlayerState()
+    setPlayer(initialPlayer)
     setElapsedMs(0)
     startTimeRef.current = null
     setView('landing')
     setShowSolution(false)
-    setFacing('right')
-    facingRef.current = 'right'
     pressedKeysRef.current.clear()
-    keyCooldownRef.current = {}
   }
 
   if (view === 'landing') {
@@ -453,7 +428,7 @@ function App() {
             </div>
             <div className="gameplay-views">
               <div className="first-person-panel">
-                <FirstPersonView maze={maze} position={position} facing={facing} />
+                <FirstPersonView maze={maze} player={player} />
               </div>
               <div className="mini-maze">
                 <p className="mini-maze-title">Maze overview</p>
