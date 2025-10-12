@@ -1,20 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { generateDailyMaze, solveMazePath } from './utils/maze'
 import { buildDailyMockLeaderboard, insertLeaderboardEntry } from './utils/leaderboard'
+import FirstPersonView from './components/FirstPersonView'
+import { movePlayerPosition, normalizeAngle } from './utils/movement'
 import './App.css'
 
-const MAZE_SIZE = 40
-const KEY_TO_DIRECTION = {
-  ArrowUp: 'top',
-  ArrowRight: 'right',
-  ArrowDown: 'bottom',
-  ArrowLeft: 'left',
-}
-const DIRECTION_DELTAS = {
-  top: [-1, 0],
-  right: [0, 1],
-  bottom: [1, 0],
-  left: [0, -1],
+const MAZE_SIZE = 20
+const CONTROL_KEYS = new Set(['ArrowUp', 'ArrowRight', 'ArrowDown', 'ArrowLeft'])
+const MOVE_SPEED = 1 // cells per second
+const TURN_SPEED = Math.PI*1.4 // radians per second (~180°)
+
+function createInitialPlayerState() {
+  return { x: 0.5, y: 0.5, angle: 0 }
 }
 
 function formatDuration(ms) {
@@ -85,13 +82,13 @@ function Leaderboard({ title, entries, highlight }) {
   )
 }
 
-function MazeBoard({ maze, position, size, solutionCells, showSolution }) {
+function MazeBoard({ maze, position, size, solutionCells, showSolution, className = '' }) {
   const wallColor = '#1f2937'
   const pathColor = '#e5e7eb'
 
   return (
     <div
-      className="maze-grid"
+      className={['maze-grid', className].filter(Boolean).join(' ')}
       style={{
         gridTemplateColumns: `repeat(${size}, 1fr)`,
         gridTemplateRows: `repeat(${size}, 1fr)`,
@@ -147,11 +144,13 @@ function App() {
   const [view, setView] = useState('landing')
   const [maze, setMaze] = useState(() => generateDailyMaze(MAZE_SIZE, dailyKey))
   const [position, setPosition] = useState({ row: 0, col: 0 })
+  const [player, setPlayer] = useState(() => createInitialPlayerState())
   const [elapsedMs, setElapsedMs] = useState(0)
   const [leaderboard, setLeaderboard] = useState(() => buildDailyMockLeaderboard(dailyKey))
   const [playerResult, setPlayerResult] = useState(null)
   const [showSolution, setShowSolution] = useState(false)
   const startTimeRef = useRef(null)
+  const pressedKeysRef = useRef(new Set())
 
   const solutionPath = useMemo(() => solveMazePath(maze), [maze])
   const solutionCells = useMemo(
@@ -163,10 +162,13 @@ function App() {
     setMaze(generateDailyMaze(MAZE_SIZE, dailyKey))
     setLeaderboard(buildDailyMockLeaderboard(dailyKey))
     setPosition({ row: 0, col: 0 })
+    const initialPlayer = createInitialPlayerState()
+    setPlayer(initialPlayer)
     setElapsedMs(0)
     setPlayerResult(null)
     setShowSolution(false)
     startTimeRef.current = null
+    pressedKeysRef.current.clear()
     setView('landing')
   }, [dailyKey])
 
@@ -183,65 +185,136 @@ function App() {
     return () => window.clearInterval(intervalId)
   }, [view])
 
+  const completeRun = useCallback(() => {
+    if (view !== 'playing') {
+      return
+    }
+
+    const finishedAt = new Date()
+    const finishedAtIso = finishedAt.toISOString()
+    const durationMs = startTimeRef.current ? finishedAt.getTime() - startTimeRef.current : 0
+    startTimeRef.current = null
+    setElapsedMs(durationMs)
+
+    const newEntry = {
+      nickname,
+      completedAt: finishedAtIso,
+      durationMs,
+    }
+
+    let computedRank = 0
+    setLeaderboard((prev) => {
+      const updated = insertLeaderboardEntry(prev, newEntry)
+      computedRank =
+        updated.findIndex(
+          (entry) => entry.nickname === newEntry.nickname && entry.completedAt === newEntry.completedAt,
+        ) + 1
+      return updated
+    })
+
+    setPlayerResult({ ...newEntry, rank: computedRank })
+    setView((prev) => (prev === 'playing' ? 'complete' : prev))
+    pressedKeysRef.current.clear()
+  }, [nickname, view])
+
+  useEffect(() => {
+    if (view !== 'playing') {
+      pressedKeysRef.current.clear()
+      return undefined
+    }
+
+    function handleKeyDown(event) {
+      if (!CONTROL_KEYS.has(event.key)) {
+        return
+      }
+
+      event.preventDefault()
+      pressedKeysRef.current.add(event.key)
+    }
+
+    function handleKeyUp(event) {
+      if (!CONTROL_KEYS.has(event.key)) {
+        return
+      }
+
+      event.preventDefault()
+      pressedKeysRef.current.delete(event.key)
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+      pressedKeysRef.current.clear()
+    }
+  }, [view])
+
   useEffect(() => {
     if (view !== 'playing') {
       return undefined
     }
 
-    function handleKeyDown(event) {
-      const direction = KEY_TO_DIRECTION[event.key]
-      if (!direction) {
-        return
-      }
-      event.preventDefault()
+    let animationFrameId = null
+    let lastTimestamp = performance.now()
 
-      const cell = maze[position.row][position.col]
-      if (!cell || cell.walls[direction]) {
-        return
-      }
+    const step = (timestamp) => {
+      const deltaSeconds = Math.min((timestamp - lastTimestamp) / 1000, 0.12)
+      lastTimestamp = timestamp
 
-      const [deltaRow, deltaCol] = DIRECTION_DELTAS[direction]
-      const nextRow = position.row + deltaRow
-      const nextCol = position.col + deltaCol
-
-      if (nextRow < 0 || nextCol < 0 || nextRow >= MAZE_SIZE || nextCol >= MAZE_SIZE) {
-        return
-      }
-
-      const nextPosition = { row: nextRow, col: nextCol }
-      setPosition(nextPosition)
-
-      if (nextRow === MAZE_SIZE - 1 && nextCol === MAZE_SIZE - 1) {
-        const finishedAt = new Date()
-        const finishedAtIso = finishedAt.toISOString()
-        const durationMs = startTimeRef.current ? finishedAt.getTime() - startTimeRef.current : 0
-        startTimeRef.current = null
-        setElapsedMs(durationMs)
-
-        const newEntry = {
-          nickname,
-          completedAt: finishedAtIso,
-          durationMs,
+      setPlayer((prev) => {
+        if (!maze.length) {
+          return prev
         }
 
-        let computedRank = 0
-        setLeaderboard((prev) => {
-          const updated = insertLeaderboardEntry(prev, newEntry)
-          computedRank =
-            updated.findIndex(
-              (entry) => entry.nickname === newEntry.nickname && entry.completedAt === newEntry.completedAt,
-            ) + 1
-          return updated
-        })
+        const pressed = pressedKeysRef.current
+        const forward = (pressed.has('ArrowUp') ? 1 : 0) - (pressed.has('ArrowDown') ? 1 : 0)
+        const turn = (pressed.has('ArrowRight') ? 1 : 0) - (pressed.has('ArrowLeft') ? 1 : 0)
 
-        setPlayerResult({ ...newEntry, rank: computedRank })
-        setView('complete')
-      }
+        if (forward === 0 && turn === 0) {
+          return prev
+        }
+
+        const nextAngle = normalizeAngle(prev.angle + turn * TURN_SPEED * deltaSeconds)
+        let nextPosition = prev
+
+        if (forward !== 0) {
+          const moveAmount = forward * MOVE_SPEED * deltaSeconds
+          const deltaX = Math.cos(nextAngle) * moveAmount
+          const deltaY = Math.sin(nextAngle) * moveAmount
+          nextPosition = movePlayerPosition(prev, deltaX, deltaY, maze)
+        }
+
+        const prevRow = Math.floor(prev.y)
+        const prevCol = Math.floor(prev.x)
+        const newRow = Math.min(MAZE_SIZE - 1, Math.max(0, Math.floor(nextPosition.y)))
+        const newCol = Math.min(MAZE_SIZE - 1, Math.max(0, Math.floor(nextPosition.x)))
+
+        if (newRow !== prevRow || newCol !== prevCol) {
+          setPosition({ row: newRow, col: newCol })
+          if (newRow === MAZE_SIZE - 1 && newCol === MAZE_SIZE - 1) {
+            completeRun()
+          }
+        }
+
+        return { x: nextPosition.x, y: nextPosition.y, angle: nextAngle }
+      })
+
+      animationFrameId = window.requestAnimationFrame(step)
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [view, maze, position, nickname])
+    animationFrameId = window.requestAnimationFrame((timestamp) => {
+      lastTimestamp = timestamp
+      step(timestamp)
+    })
+
+    return () => {
+      if (animationFrameId) {
+        window.cancelAnimationFrame(animationFrameId)
+      }
+    }
+  }, [completeRun, maze, view])
 
   const handleStartGame = (event) => {
     if (event) {
@@ -254,18 +327,24 @@ function App() {
 
     setMaze(generateDailyMaze(MAZE_SIZE, dailyKey))
     setPosition({ row: 0, col: 0 })
+    const initialPlayer = createInitialPlayerState()
+    setPlayer(initialPlayer)
     setElapsedMs(0)
     setView('playing')
     startTimeRef.current = Date.now()
     setShowSolution(false)
+    pressedKeysRef.current.clear()
   }
 
   const handleReturnHome = () => {
     setPosition({ row: 0, col: 0 })
+    const initialPlayer = createInitialPlayerState()
+    setPlayer(initialPlayer)
     setElapsedMs(0)
     startTimeRef.current = null
     setView('landing')
     setShowSolution(false)
+    pressedKeysRef.current.clear()
   }
 
   if (view === 'landing') {
@@ -317,7 +396,7 @@ function App() {
         <>
           <header className="hero">
             <h1>Navigate the maze</h1>
-            <p>Use your keyboard arrows to move. Reach the goal to log your finish time.</p>
+            <p>Use the arrow keys to move forward and backward and to turn left or right. Reach the goal to log your finish time.</p>
             <div className="status-grid">
               <div>
                 <span className="status-label">Player</span>
@@ -347,20 +426,29 @@ function App() {
                 {showSolution ? 'Hide solution path' : 'Show solution path'}
               </button>
             </div>
-            <MazeBoard
-              maze={maze}
-              position={position}
-              size={MAZE_SIZE}
-              solutionCells={solutionCells}
-              showSolution={showSolution}
-            />
+            <div className="gameplay-views">
+              <div className="first-person-panel">
+                <FirstPersonView maze={maze} player={player} />
+              </div>
+              <div className="mini-maze">
+                <p className="mini-maze-title">Maze overview</p>
+                <MazeBoard
+                  maze={maze}
+                  position={position}
+                  size={MAZE_SIZE}
+                  solutionCells={solutionCells}
+                  showSolution={showSolution}
+                  className="mini-maze-grid"
+                />
+              </div>
+            </div>
             <div className="legend">
               <span className="legend-item start">Start</span>
               <span className="legend-item finish">Goal</span>
               <span className="legend-item current">You</span>
               {showSolution ? <span className="legend-item solution">Path preview</span> : null}
             </div>
-            <p className="controls-hint">Keyboard: ↑ ↓ ← →</p>
+            <p className="controls-hint">Keyboard: ↑/↓ move · ←/→ turn</p>
           </section>
         </>
       )}

@@ -450,6 +450,91 @@ button.ghost:hover {
   text-align: center;
 }
 
+.gameplay-views {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1.75rem;
+  align-items: stretch;
+}
+
+.first-person-panel {
+  position: relative;
+  background: linear-gradient(140deg, rgba(15, 23, 42, 0.92), rgba(30, 58, 138, 0.85));
+  border-radius: 24px;
+  padding: clamp(0.85rem, 2vw, 1.25rem);
+  box-shadow: 0 28px 60px rgba(15, 23, 42, 0.22);
+}
+
+.first-person-view {
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+  background: radial-gradient(circle at center, rgba(148, 163, 184, 0.12), rgba(15, 23, 42, 0.95));
+}
+
+.first-person-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.first-person-overlay {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  background: rgba(15, 23, 42, 0.6);
+  color: #f8fafc;
+  padding: 0.6rem 0.9rem;
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.35);
+  backdrop-filter: blur(6px);
+}
+
+.first-person-heading {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #bae6fd;
+  font-weight: 700;
+}
+
+.first-person-facing {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.mini-maze {
+  align-self: end;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.05);
+  border-radius: 18px;
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
+}
+
+.mini-maze-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.maze-grid.mini-maze-grid {
+  width: 320px;
+  height: 320px;
+  margin: 0;
+  border-radius: 14px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.18);
+}
+
 .maze-actions {
   width: 100%;
   display: flex;
@@ -561,6 +646,56 @@ button.ghost:hover {
   margin: 0;
   color: #475569;
   font-size: 0.9rem;
+}
+
+@media (max-width: 960px) {
+  .gameplay-views {
+    grid-template-columns: 1fr;
+  }
+
+  .mini-maze {
+    align-self: stretch;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .mini-maze-title {
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+  }
+
+  .maze-grid.mini-maze-grid {
+    width: min(260px, 60vw);
+    height: min(260px, 60vw);
+  }
+}
+
+@media (max-width: 640px) {
+  .first-person-overlay {
+    top: 12px;
+    left: 12px;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .first-person-heading {
+    font-size: 0.7rem;
+  }
+
+  .first-person-facing {
+    font-size: 0.85rem;
+  }
+
+  .mini-maze {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .maze-grid.mini-maze-grid {
+    width: min(220px, 70vw);
+    height: min(220px, 70vw);
+  }
 }
 
 .completion-callout {
