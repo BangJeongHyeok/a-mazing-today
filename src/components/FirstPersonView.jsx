@@ -58,6 +58,7 @@ function FirstPersonView({ maze, player }) {
         orientation: sample.orientation,
         angleDelta,
         goalDistance: sample.goalVisible ? sample.goalDistance : null,
+        hitPoint: sample.hitPoint,
       })
 
       if (sample.goalVisible) {
@@ -86,6 +87,20 @@ function FirstPersonView({ maze, player }) {
     const shadeIndex = Math.min(palette.length - 1, Math.round(depthRatio * (palette.length - 1)))
     const fill = palette[shadeIndex]
 
+    let planeKey = null
+
+    if (ray.hitPoint && ray.orientation !== 'none') {
+      const precision = (value) => Math.round(value * 1000) / 1000
+
+      if (ray.orientation === 'vertical') {
+        const axis = precision(ray.hitPoint.x)
+        planeKey = `v:${axis}`
+      } else if (ray.orientation === 'horizontal') {
+        const axis = precision(ray.hitPoint.y)
+        planeKey = `h:${axis}`
+      }
+    }
+
     return {
       ray,
       correctedDistance,
@@ -93,6 +108,7 @@ function FirstPersonView({ maze, player }) {
       top,
       bottom,
       fill,
+      planeKey,
     }
   })
 
@@ -122,6 +138,10 @@ function FirstPersonView({ maze, player }) {
     const needsEdge = (neighbor, isCloserCheck = false) => {
       if (!neighbor) {
         return true
+      }
+
+      if (neighbor.planeKey && column.planeKey && neighbor.planeKey === column.planeKey) {
+        return false
       }
 
       const heightDelta = Math.abs(neighbor.wallHeight - column.wallHeight)

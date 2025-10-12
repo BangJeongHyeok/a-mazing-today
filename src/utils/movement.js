@@ -153,6 +153,7 @@ export function castRay(maze, start, angle, maxDistance = maze.length * Math.SQR
       orientation: 'none',
       goalVisible: false,
       goalDistance: null,
+      hitPoint: null,
     }
   }
 
@@ -193,6 +194,7 @@ export function castRay(maze, start, angle, maxDistance = maze.length * Math.SQR
   let goalDistance = goalVisible ? 0 : null
   let distance = 0
   let orientation = 'none'
+  let hitPoint = null
 
   const maxIterations = size * size * 4
 
@@ -263,10 +265,18 @@ export function castRay(maze, start, angle, maxDistance = maze.length * Math.SQR
     distance = maxDistance
   }
 
+  if (orientation !== 'none') {
+    hitPoint = {
+      x: start.x + dirX * distance,
+      y: start.y + dirY * distance,
+    }
+  }
+
   return {
     distance,
     orientation,
     goalVisible,
     goalDistance,
+    hitPoint,
   }
 }
