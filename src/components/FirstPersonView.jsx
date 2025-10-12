@@ -9,23 +9,24 @@ const NUM_RAYS = 160
 // from closest (index 0) to farthest (last index). Darker or lighter colors can
 // be placed here to tune how vertical edges fade with distance.
 const VERTICAL_SHADES = [
-  '#1d2a45', // Nearest vertical wall face (adjacent tile)
-  '#22304d', // Second distance step for vertical faces
-  '#263555', // Mid-range vertical faces
-  '#2b3b5d', // Farther vertical faces before horizon
-  '#314266', // Farthest visible vertical faces (near horizon)
+  '#2f3a29', // Nearest vertical wall face (rich deep olive-green)
+  '#3a4732', // Second distance step for vertical faces
+  '#46533b', // Mid-range vertical faces
+  '#526046', // Farther vertical faces before horizon
+  '#5e6d51', // Farthest visible vertical faces (near horizon)
 ]
 
 // Shades applied to walls when a ray hits the horizontal side of a tile, also
 // ordered from nearest to farthest. Adjusting these values controls the depth
 // shading for horizontal-facing walls independently of vertical ones.
 const HORIZONTAL_SHADES = [
-  '#141d31', // Nearest horizontal wall face (adjacent tile)
-  '#182239', // Second distance step for horizontal faces
-  '#1d2841', // Mid-range horizontal faces
-  '#222e49', // Farther horizontal faces before horizon
-  '#283452', // Farthest visible horizontal faces (near horizon)
+  '#26321f', // Nearest horizontal wall face (slightly darker, less light exposure)
+  '#2f3d27', // Second distance step for horizontal faces
+  '#384830', // Mid-range horizontal faces
+  '#42533a', // Farther horizontal faces before horizon
+  '#4c5e44', // Farthest visible horizontal faces (near horizon)
 ]
+
 const FLAG_COLOR = '#facc15'
 
 function wrapAngle(angle) {
@@ -285,13 +286,13 @@ function FirstPersonView({ maze, player }) {
       <svg className="first-person-canvas" viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`} role="img" aria-label="First-person maze view">
         <defs>
           <linearGradient id={skyGradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#0f172a" />
-            <stop offset="100%" stopColor="#1f2937" />
+            <stop offset="0%" stopColor="#1b2618" />   {/* 상단: 짙은 올리브 블랙 (하늘 가장 위) */}
+            <stop offset="100%" stopColor="#2a3a25" /> {/* 하단: 다크 모스 그린 (지평선 근처) */}
           </linearGradient>
           <linearGradient id={floorGradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#0b1120" />
-            <stop offset="50%" stopColor="#111827" />
-            <stop offset="100%" stopColor="#1f2937" />
+            <stop offset="0%" stopColor="#161f14" />   {/* 바닥 상단: 가장 어두운 영역 (근거리) */}
+            <stop offset="50%" stopColor="#1f2a19" />  {/* 중간 영역: 딥 올리브 */}
+            <stop offset="100%" stopColor="#2d3b26" /> {/* 하단: 원거리, 부드럽게 녹회색 전이 */}
           </linearGradient>
         </defs>
         <rect x="0" y="0" width={VIEW_WIDTH} height={VIEW_HEIGHT / 2} fill={`url(#${skyGradientId})`} />
