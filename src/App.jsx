@@ -151,6 +151,8 @@ function App() {
   const [leaderboard, setLeaderboard] = useState(() => buildDailyMockLeaderboard(dailyKey))
   const [playerResult, setPlayerResult] = useState(null)
   const [showSolution, setShowSolution] = useState(false)
+  const [heroPointer, setHeroPointer] = useState({ x: 50, y: 50 })
+  const [startPointer, setStartPointer] = useState({ x: 50, y: 50 })
   const startTimeRef = useRef(null)
 
   const solutionPath = useMemo(() => solveMazePath(maze), [maze])
@@ -268,12 +270,35 @@ function App() {
     setShowSolution(false)
   }
 
+  const updatePointerPosition = (event, setter) => {
+    const bounds = event.currentTarget.getBoundingClientRect()
+    const x = ((event.clientX - bounds.left) / bounds.width) * 100
+    const y = ((event.clientY - bounds.top) / bounds.height) * 100
+    setter({
+      x: Math.min(100, Math.max(0, x)),
+      y: Math.min(100, Math.max(0, y)),
+    })
+  }
+
+  const resetPointerPosition = (setter) => {
+    setter({ x: 50, y: 50 })
+  }
+
   if (view === 'landing') {
     return (
       <div className="landing-page">
         <div className="landing-background" aria-hidden="true" />
         <div className="landing-main">
-          <header className="landing-hero">
+          <header
+            className="landing-hero"
+            style={{
+              '--hero-pointer-x': `${heroPointer.x}%`,
+              '--hero-pointer-y': `${heroPointer.y}%`,
+            }}
+            onPointerDown={(event) => updatePointerPosition(event, setHeroPointer)}
+            onPointerMove={(event) => updatePointerPosition(event, setHeroPointer)}
+            onPointerLeave={() => resetPointerPosition(setHeroPointer)}
+          >
             <div className="landing-hero-body">
               <h1 className="landing-title">A-Mazing Today</h1>
               <p className="landing-subtitle">
@@ -286,7 +311,17 @@ function App() {
               </div>
             </div>
 
-            <form className="landing-start" onSubmit={handleStartGame}>
+            <form
+              className="landing-start"
+              onSubmit={handleStartGame}
+              style={{
+                '--start-pointer-x': `${startPointer.x}%`,
+                '--start-pointer-y': `${startPointer.y}%`,
+              }}
+              onPointerDown={(event) => updatePointerPosition(event, setStartPointer)}
+              onPointerMove={(event) => updatePointerPosition(event, setStartPointer)}
+              onPointerLeave={() => resetPointerPosition(setStartPointer)}
+            >
               <label className="visually-hidden" htmlFor="nickname">
                 Nickname
               </label>
