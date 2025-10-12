@@ -145,52 +145,126 @@ export function movePlayerPosition(position, deltaX, deltaY, maze) {
 }
 
 export function castRay(maze, start, angle, maxDistance = maze.length * Math.SQRT2) {
-  const stepSize = 0.02
   const size = maze.length
-  let x = start.x
-  let y = start.y
-  let distance = 0
-  let goalVisible = false
-  let goalDistance = null
-  let orientation = 'none'
 
-  for (let i = 0; i < 1000 && distance < maxDistance; i += 1) {
-    const deltaX = Math.cos(angle) * stepSize
-    const deltaY = Math.sin(angle) * stepSize
-
-    const horizontal = attemptHorizontal(x, y, deltaX, maze)
-    const vertical = attemptVertical(horizontal.x, y, deltaY, maze)
-
-    const nextX = horizontal.x
-    const nextY = vertical.y
-    const movedDX = nextX - x
-    const movedDY = nextY - y
-    const stepDistance = Math.hypot(movedDX, movedDY)
-
-    if (stepDistance < 1e-6) {
-      orientation = horizontal.hit ? 'vertical' : vertical.hit ? 'horizontal' : 'none'
-      break
-    }
-
-    distance += stepDistance
-    x = nextX
-    y = nextY
-
-    const cellRow = Math.floor(y)
-    const cellCol = Math.floor(x)
-    if (!goalVisible && cellRow === size - 1 && cellCol === size - 1) {
-      goalVisible = true
-      goalDistance = distance
-    }
-
-    if (horizontal.hit || vertical.hit) {
-      orientation = horizontal.hit ? 'vertical' : 'horizontal'
-      break
+  if (size === 0) {
+    return {
+      distance: 0,
+      orientation: 'none',
+      goalVisible: false,
+      goalDistance: null,
     }
   }
 
+  const dirX = Math.cos(angle)
+  const dirY = Math.sin(angle)
+
+  const stepX = dirX === 0 ? 0 : dirX > 0 ? 1 : -1
+  const stepY = dirY === 0 ? 0 : dirY > 0 ? 1 : -1
+
+  const deltaDistX = dirX === 0 ? Number.POSITIVE_INFINITY : Math.abs(1 / dirX)
+  const deltaDistY = dirY === 0 ? Number.POSITIVE_INFINITY : Math.abs(1 / dirY)
+
+  let sideDistX
+  if (stepX === 0) {
+    sideDistX = Number.POSITIVE_INFINITY
+  } else if (stepX > 0) {
+    sideDistX = (Math.floor(start.x) + 1 - start.x) * deltaDistX
+  } else {
+    sideDistX = (start.x - Math.floor(start.x)) * deltaDistX
+  }
+
+  let sideDistY
+  if (stepY === 0) {
+    sideDistY = Number.POSITIVE_INFINITY
+  } else if (stepY > 0) {
+    sideDistY = (Math.floor(start.y) + 1 - start.y) * deltaDistY
+  } else {
+    sideDistY = (start.y - Math.floor(start.y)) * deltaDistY
+  }
+
+  let cellCol = clamp(Math.floor(start.x), 0, size - 1)
+  let cellRow = clamp(Math.floor(start.y), 0, size - 1)
+
+  const goalRow = size - 1
+  const goalCol = size - 1
+
+  let goalVisible = cellRow === goalRow && cellCol === goalCol
+  let goalDistance = goalVisible ? 0 : null
+  let distance = 0
+  let orientation = 'none'
+
+  const maxIterations = size * size * 4
+
+  for (let i = 0; i < maxIterations; i += 1) {
+    const nextIsVertical = sideDistX < sideDistY
+    const boundaryDistance = nextIsVertical ? sideDistX : sideDistY
+
+    if (boundaryDistance > maxDistance) {
+      distance = maxDistance
+      break
+    }
+
+    if (nextIsVertical) {
+      const wall =
+        stepX === 0 ||
+        cellCol < 0 ||
+        cellCol >= size ||
+        cellRow < 0 ||
+        cellRow >= size ||
+        (stepX > 0
+          ? maze[cellRow]?.[cellCol]?.walls.right ?? true
+          : maze[cellRow]?.[cellCol]?.walls.left ?? true)
+
+      if (wall) {
+        distance = boundaryDistance
+        orientation = 'vertical'
+        break
+      }
+
+      cellCol += stepX
+      sideDistX += deltaDistX
+    } else {
+      const wall =
+        stepY === 0 ||
+        cellCol < 0 ||
+        cellCol >= size ||
+        cellRow < 0 ||
+        cellRow >= size ||
+        (stepY > 0
+          ? maze[cellRow]?.[cellCol]?.walls.bottom ?? true
+          : maze[cellRow]?.[cellCol]?.walls.top ?? true)
+
+      if (wall) {
+        distance = boundaryDistance
+        orientation = 'horizontal'
+        break
+      }
+
+      cellRow += stepY
+      sideDistY += deltaDistY
+    }
+
+    if (!goalVisible && cellRow === goalRow && cellCol === goalCol) {
+      const centerX = goalCol + 0.5
+      const centerY = goalRow + 0.5
+      const toCenterX = centerX - start.x
+      const toCenterY = centerY - start.y
+      const projected = toCenterX * dirX + toCenterY * dirY
+
+      if (projected > 0) {
+        goalVisible = true
+        goalDistance = Math.min(projected, maxDistance)
+      }
+    }
+  }
+
+  if (distance === 0 && orientation === 'none') {
+    distance = maxDistance
+  }
+
   return {
-    distance: Math.min(distance, maxDistance),
+    distance,
     orientation,
     goalVisible,
     goalDistance,
