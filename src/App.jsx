@@ -7,7 +7,7 @@ import './App.css'
 
 const MAZE_SIZE = 20
 const CONTROL_KEYS = new Set(['ArrowUp', 'ArrowRight', 'ArrowDown', 'ArrowLeft'])
-const MOVE_SPEED = 1 // cells per second
+const MOVE_SPEED = 1.5 // cells per second
 const TURN_SPEED = Math.PI*1.4 // radians per second (~180°)
 
 function createInitialPlayerState() {
@@ -356,12 +356,11 @@ function App() {
             <div className="landing-hero-body">
               <h1 className="landing-title">A-Mazing Today</h1>
               <p className="landing-subtitle">
-                A daily 40×40 maze challenge. Everyone gets the same layout each day—race to the exit and see who escaped
+                A daily {MAZE_SIZE}×{MAZE_SIZE} maze challenge. Everyone gets the same layout each day—race to the exit and see who escaped
                 first!
               </p>
               <div className="landing-meta">
                 <span className="pill">{todayLabel}</span>
-                <span className="pill secondary">Seed: {dailyKey}</span>
               </div>
             </div>
 
