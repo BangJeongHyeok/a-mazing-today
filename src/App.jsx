@@ -264,27 +264,30 @@ function App() {
     setShowSolution(false)
   }
 
-  return (
-    <div className="page">
-      {view === 'landing' && (
-        <>
-          <header className="hero">
-            <h1>A-Mazing Today</h1>
-            <p>
-              A daily 40×40 maze challenge. Everyone gets the same layout each day—race to the exit and see who
-              escaped first!
+  if (view === 'landing') {
+    return (
+      <div className="landing-page">
+        <div className="landing-background" aria-hidden="true" />
+        <div className="landing-main">
+          <header className="landing-hero">
+            <h1 className="landing-title">A-Mazing Today</h1>
+            <p className="landing-subtitle">
+              A daily 40×40 maze challenge. Everyone gets the same layout each day—race to the exit and see who escaped
+              first!
             </p>
-            <div className="hero-meta">
+            <div className="landing-meta">
               <span className="pill">{todayLabel}</span>
               <span className="pill secondary">Seed: {dailyKey}</span>
             </div>
           </header>
 
-          <section className="card start-card">
-            <h2>Jump in</h2>
-            <p>Pick a nickname to appear on today&apos;s leaderboard.</p>
-            <div className="start-form">
-              <label htmlFor="nickname">Nickname</label>
+          <section className="card landing-start-card" aria-labelledby="landing-start-heading">
+            <h2 id="landing-start-heading">Ready to run?</h2>
+            <p className="landing-start-description">Choose a nickname to appear on today&apos;s leaderboard.</p>
+            <div className="start-form landing-form">
+              <label className="visually-hidden" htmlFor="nickname">
+                Nickname
+              </label>
               <input
                 id="nickname"
                 type="text"
@@ -297,11 +300,17 @@ function App() {
               Play today&apos;s maze
             </button>
           </section>
+        </div>
 
+        <div className="landing-leaderboard">
           <Leaderboard title="Today&apos;s leaderboard" entries={leaderboard} highlight={playerResult} />
-        </>
-      )}
+        </div>
+      </div>
+    )
+  }
 
+  return (
+    <div className="page">
       {view === 'playing' && (
         <>
           <header className="hero">
