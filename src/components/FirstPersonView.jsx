@@ -5,7 +5,14 @@ const VIEW_WIDTH = 600
 const VIEW_HEIGHT = 400
 const FIELD_OF_VIEW = Math.PI / 2
 const NUM_RAYS = 160
+// Shades applied to walls when a ray hits the vertical side of a tile, ordered
+// from closest (index 0) to farthest (last index). Darker or lighter colors can
+// be placed here to tune how vertical edges fade with distance.
 const VERTICAL_SHADES = ['#1d2a45', '#22304d', '#263555', '#2b3b5d', '#314266']
+
+// Shades applied to walls when a ray hits the horizontal side of a tile, also
+// ordered from nearest to farthest. Adjusting these values controls the depth
+// shading for horizontal-facing walls independently of vertical ones.
 const HORIZONTAL_SHADES = ['#141d31', '#182239', '#1d2841', '#222e49', '#283452']
 const FLAG_COLOR = '#facc15'
 
@@ -69,25 +76,106 @@ function FirstPersonView({ maze, player }) {
   const columnWidth = VIEW_WIDTH / NUM_RAYS
   const maxDepthReference = Math.max(3.5, size * 0.85)
 
-  const wallColumns = rays.map((ray) => {
+  const columnData = rays.map((ray) => {
     const correctedDistance = Math.max(0.0001, ray.distance * Math.cos(ray.angleDelta))
     const wallHeight = Math.min(VIEW_HEIGHT * 1.3, (VIEW_HEIGHT * 0.9) / correctedDistance)
     const top = (VIEW_HEIGHT - wallHeight) / 2
+    const bottom = top + wallHeight
     const palette = ray.orientation === 'vertical' ? VERTICAL_SHADES : HORIZONTAL_SHADES
     const depthRatio = Math.min(1, correctedDistance / maxDepthReference)
     const shadeIndex = Math.min(palette.length - 1, Math.round(depthRatio * (palette.length - 1)))
     const fill = palette[shadeIndex]
 
-    return (
-      <rect
-        key={`wall-${ray.index}`}
-        x={ray.index * columnWidth}
-        y={top}
-        width={columnWidth + 1}
-        height={wallHeight}
-        fill={fill}
-      />
-    )
+    return {
+      ray,
+      correctedDistance,
+      wallHeight,
+      top,
+      bottom,
+      fill,
+    }
+  })
+
+  const wallColumns = columnData.map((column) => (
+    <rect
+      key={`wall-${column.ray.index}`}
+      x={column.ray.index * columnWidth}
+      y={column.top}
+      width={columnWidth + 1}
+      height={column.wallHeight}
+      fill={column.fill}
+    />
+  ))
+
+  const edgeThreshold = {
+    height: VIEW_HEIGHT * 0.035,
+    distanceRatio: 0.18,
+  }
+
+  const wallEdges = columnData.flatMap((column, index) => {
+    const edges = []
+    const prev = columnData[index - 1]
+    const next = columnData[index + 1]
+    const depthRatio = Math.min(1, column.correctedDistance / maxDepthReference)
+    const opacity = Math.max(0.12, 0.6 * (1 - depthRatio))
+
+    const needsEdge = (neighbor, isCloserCheck = false) => {
+      if (!neighbor) {
+        return true
+      }
+
+      const heightDelta = Math.abs(neighbor.wallHeight - column.wallHeight)
+      const distanceDelta = Math.abs(neighbor.correctedDistance - column.correctedDistance)
+      const relativeDistance = distanceDelta / Math.max(column.correctedDistance, 0.0001)
+
+      if (neighbor.ray.orientation !== column.ray.orientation) {
+        return true
+      }
+
+      if (heightDelta > edgeThreshold.height || relativeDistance > edgeThreshold.distanceRatio) {
+        return true
+      }
+
+      if (isCloserCheck && column.correctedDistance < neighbor.correctedDistance * (1 - edgeThreshold.distanceRatio)) {
+        return true
+      }
+
+      return false
+    }
+
+    if (needsEdge(prev, true)) {
+      const x = column.ray.index * columnWidth
+      edges.push(
+        <line
+          key={`edge-left-${column.ray.index}`}
+          x1={x}
+          y1={column.top}
+          x2={x}
+          y2={column.bottom}
+          stroke={`rgba(255, 255, 255, ${opacity.toFixed(3)})`}
+          strokeWidth={1.2}
+          strokeLinecap="round"
+        />
+      )
+    }
+
+    if (needsEdge(next)) {
+      const x = (column.ray.index + 1) * columnWidth
+      edges.push(
+        <line
+          key={`edge-right-${column.ray.index}`}
+          x1={x}
+          y1={column.top}
+          x2={x}
+          y2={column.bottom}
+          stroke={`rgba(255, 255, 255, ${opacity.toFixed(3)})`}
+          strokeWidth={1.2}
+          strokeLinecap="round"
+        />
+      )
+    }
+
+    return edges
   })
 
   let goalElements = null
@@ -188,6 +276,7 @@ function FirstPersonView({ maze, player }) {
         {floorGuides}
         {wallColumns}
         {goalElements}
+        {wallEdges}
         <circle
           cx={VIEW_WIDTH / 2}
           cy={VIEW_HEIGHT / 2}
