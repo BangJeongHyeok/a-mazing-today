@@ -15,7 +15,7 @@
   background-image: linear-gradient(90deg, rgba(26, 175, 235, 0.55) 0, rgba(26, 175, 235, 0.55) 2px, transparent 2px),
     linear-gradient(180deg, rgba(26, 175, 235, 0.55) 0, rgba(26, 175, 235, 0.55) 2px, transparent 2px);
   background-size: 110px 110px;
-  animation: panGrid 10s linear infinite;
+  animation: panGrid 1s linear infinite;
   opacity: 0.8;
   pointer-events: none;
   z-index: 0;
@@ -63,6 +63,7 @@
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 24px 65px rgba(15, 23, 42, 0.2);
   backdrop-filter: blur(12px);
+  
 }
 
 .landing-hero-body {
@@ -630,5 +631,129 @@ button.ghost:hover {
 
   .landing-start-card .primary {
     width: 100%;
+  }
+}
+
+/* === Layout & sizing fixes: keep leaderboard off the title === */
+
+/* 1) 기본적으로 leaderboard 폭을 화면에 맞춰 유연하게 축소 */
+.landing-leaderboard {
+  /* 기존 absolute 배치 유지 시에도 폭이 줄어들도록 클램프 */
+  width: clamp(260px, 28vw, 420px);
+}
+
+/* 2) 넓은 화면에서는 .landing-page를 2열 그리드로 전환해
+      메인과 leaderboard가 자연스럽게 나란히 배치되도록 함.
+      (겹침 방지, 우측 하단 배치 유지) */
+@media (min-width: 901px) {
+  .landing-page {
+    display: grid;                 /* flex -> grid로 override */
+    grid-template-columns: 1fr minmax(260px, 28vw);
+    gap: clamp(1rem, 4vw, 3rem);
+    align-items: end;              /* leaderboard를 하단 정렬 */
+  }
+
+  /* 그리드 전환 시 absolute 포지셔닝 제거 */
+  .landing-leaderboard {
+    position: static;
+    width: 100%;                   /* 우측 열에 맞춰 가로폭 자동 */
+    margin: 0;                     /* 잔여 여백 제거 */
+  }
+
+  /* 메인 컬럼은 가운데 정렬 + 기존 최대폭 유지 */
+  .landing-main {
+    justify-self: center;
+    width: min(760px, 100%);
+  }
+}
+
+/* 3) 높이가 낮은 환경에서도 겹치지 않게: leaderboard 높이 제한을 조금 더 강화 */
+.landing-leaderboard .leaderboard-wrapper {
+  max-height: min(36vh, 280px);
+}
+
+/* === Typo scale: 제목이 화면 크기에 더 매끄럽게 반응 === */
+
+/* 4) 타이틀의 최소/최대 폰트 크기를 다이내믹하게 조정하여
+      작은 화면에서 과도하게 커져 겹치는 문제 완화 */
+.landing-title {
+  /* 기존: clamp(3.25rem, 10vw, 5rem)
+     → 작은 화면 최소값을 낮추고, 중간 구간의 기울기를 완만하게 */
+  font-size: clamp(2.25rem, 6.5vw + 0.5rem, 4.25rem);
+  line-height: 0.98; /* 약간 여유 */
+}
+
+/* 5) 히어로 카드의 패딩도 더 일찍 줄여서 실제 점유 영역 축소 */
+@media (max-width: 1100px) {
+  .landing-hero {
+    padding: clamp(1.25rem, 3.5vw, 2rem) clamp(1.5rem, 5vw, 2.5rem);
+  }
+}
+
+/* 6) 중간 폭에서 leaderboard가 메인과 겹치지 않도록
+      가로폭 상한을 더 타이트하게 */
+@media (max-width: 1100px) and (min-width: 901px) {
+  .landing-leaderboard {
+    width: clamp(240px, 24vw, 360px);
+  }
+}
+
+/* 7) 기존 모바일 규칙 유지: 900px 이하에서는 자동으로 아래로 내려감 (겹침 없음)
+      단, 모바일에서도 타이틀/패딩 조금 더 컴팩트하게 */
+@media (max-width: 900px) {
+  .landing-title {
+    font-size: clamp(2rem, 8vw, 3rem);
+  }
+  .landing-hero {
+    gap: clamp(1rem, 3.5vh, 1.5rem);
+  }
+}
+
+/* ===== Centered Hero with balanced side columns ===== */
+:root {
+  /* 순위표 최대·상대 폭(필요하면 숫자만 조정) */
+  --side-w: clamp(240px, 22vw, 340px);
+}
+
+/* 데스크톱 이상: 3열 그리드로 중앙 고정 */
+@media (min-width: 901px) {
+  .landing-page {
+    /* 기존 flex/grid 설정을 덮어씀 */
+    display: grid;
+    /* 좌측 스페이서 == 우측 순위표 폭 → 중앙이 진짜 화면 정중앙에 위치 */
+    grid-template-columns: var(--side-w) minmax(520px, min(760px, 100%)) var(--side-w);
+    grid-template-areas: "sp main side";
+    align-items: center; /* 히어로 수직 중앙 정렬 */
+    gap: clamp(1rem, 4vw, 3rem);
+    min-height: 100vh;  /* 안전하게 세로 중앙 보장 */
+  }
+
+  /* 중앙 열에 히어로 고정 */
+  .landing-main {
+    grid-area: main;
+    justify-self: center;   /* 중앙 열 안에서도 가운데 */
+    width: min(760px, 100%);
+    text-align: center;
+  }
+
+  /* 우측 열에 순위표 고정 + 절대포지셔닝 제거 */
+  .landing-leaderboard {
+    grid-area: side;
+    position: static;
+    width: 100%;        /* 열 폭을 가득 사용 */
+    margin: 0;
+    align-self: end;    /* 우측 하단 배치 감각 유지(원하면 center 로 바꿔도 됨) */
+  }
+
+  /* 순위표 내부 스크롤 높이 보수적으로 축소해 겹침 여지 제거 */
+  .landing-leaderboard .leaderboard-wrapper {
+    max-height: min(34vh, 260px);
+  }
+}
+
+/* 넓은 화면에서 순위표 더 줄이고 싶으면 여기 수치만 다이어트 */
+@media (min-width: 1200px) {
+  :root {
+    --side-w: clamp(240px, 20vw, 320px);
   }
 }
