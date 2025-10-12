@@ -3,7 +3,7 @@ import { castRay, normalizeAngle } from '../utils/movement'
 
 const VIEW_WIDTH = 600
 const VIEW_HEIGHT = 400
-const FIELD_OF_VIEW = Math.PI / 3
+const FIELD_OF_VIEW = Math.PI / 2
 const NUM_RAYS = 160
 const VERTICAL_SHADES = ['#1d2a45', '#22304d', '#263555', '#2b3b5d', '#314266']
 const HORIZONTAL_SHADES = ['#141d31', '#182239', '#1d2841', '#222e49', '#283452']
