@@ -5,7 +5,7 @@ import FirstPersonView from './components/FirstPersonView'
 import { movePlayerPosition, normalizeAngle } from './utils/movement'
 import './App.css'
 
-const MAZE_SIZE = 40
+const MAZE_SIZE = 20
 const CONTROL_KEYS = new Set(['ArrowUp', 'ArrowRight', 'ArrowDown', 'ArrowLeft'])
 const MOVE_SPEED = 1 // cells per second
 const TURN_SPEED = Math.PI*1.4 // radians per second (~180°)
