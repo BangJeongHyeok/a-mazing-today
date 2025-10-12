@@ -310,30 +310,6 @@ function FirstPersonView({ maze, player }) {
         {wallColumns}
         {goalElements}
         {wallEdges}
-        <circle
-          cx={VIEW_WIDTH / 2}
-          cy={VIEW_HEIGHT / 2}
-          r={4}
-          stroke="#e5e7eb"
-          strokeWidth={1}
-          fill="rgba(15, 23, 42, 0.45)"
-        />
-        <line
-          x1={VIEW_WIDTH / 2}
-          y1={VIEW_HEIGHT / 2 - 10}
-          x2={VIEW_WIDTH / 2}
-          y2={VIEW_HEIGHT / 2 + 10}
-          stroke="rgba(229, 231, 235, 0.45)"
-          strokeWidth={1}
-        />
-        <line
-          x1={VIEW_WIDTH / 2 - 10}
-          y1={VIEW_HEIGHT / 2}
-          x2={VIEW_WIDTH / 2 + 10}
-          y2={VIEW_HEIGHT / 2}
-          stroke="rgba(229, 231, 235, 0.45)"
-          strokeWidth={1}
-        />
       </svg>
       <div className="first-person-overlay">
         <span className="first-person-heading">First-person view</span>
