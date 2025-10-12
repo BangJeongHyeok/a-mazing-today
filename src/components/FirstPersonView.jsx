@@ -8,12 +8,24 @@ const NUM_RAYS = 160
 // Shades applied to walls when a ray hits the vertical side of a tile, ordered
 // from closest (index 0) to farthest (last index). Darker or lighter colors can
 // be placed here to tune how vertical edges fade with distance.
-const VERTICAL_SHADES = ['#1d2a45', '#22304d', '#263555', '#2b3b5d', '#314266']
+const VERTICAL_SHADES = [
+  '#1d2a45', // Nearest vertical wall face (adjacent tile)
+  '#22304d', // Second distance step for vertical faces
+  '#263555', // Mid-range vertical faces
+  '#2b3b5d', // Farther vertical faces before horizon
+  '#314266', // Farthest visible vertical faces (near horizon)
+]
 
 // Shades applied to walls when a ray hits the horizontal side of a tile, also
 // ordered from nearest to farthest. Adjusting these values controls the depth
 // shading for horizontal-facing walls independently of vertical ones.
-const HORIZONTAL_SHADES = ['#141d31', '#182239', '#1d2841', '#222e49', '#283452']
+const HORIZONTAL_SHADES = [
+  '#141d31', // Nearest horizontal wall face (adjacent tile)
+  '#182239', // Second distance step for horizontal faces
+  '#1d2841', // Mid-range horizontal faces
+  '#222e49', // Farther horizontal faces before horizon
+  '#283452', // Farthest visible horizontal faces (near horizon)
+]
 const FLAG_COLOR = '#facc15'
 
 function wrapAngle(angle) {
