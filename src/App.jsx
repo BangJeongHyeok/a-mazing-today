@@ -393,23 +393,6 @@ function App() {
     return (
       <div className="play-page">
         <section className="card maze-panel">
-          <header className="maze-panel-header">
-            <div className="maze-panel-copy">
-              <h1>Navigate the maze</h1>
-              <p>Use the arrow keys to move, turn, and find the goal before time slips away.</p>
-            </div>
-            <div className="maze-panel-meta">
-              <div>
-                <span className="status-label">Player</span>
-                <span className="status-value">{nickname}</span>
-              </div>
-              <div>
-                <span className="status-label">Daily seed</span>
-                <span className="status-value">{dailyKey}</span>
-              </div>
-            </div>
-          </header>
-
           <div className="maze-actions">
             <button
               type="button"
