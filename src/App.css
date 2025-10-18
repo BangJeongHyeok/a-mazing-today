@@ -255,6 +255,15 @@
   color: #0f172a;
 }
 
+.play-page {
+  min-height: 100vh;
+  padding: clamp(2rem, 5vw, 3rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+}
+
 .hero {
   background: linear-gradient(135deg, #e0f2fe 0%, #f8fafc 100%);
   padding: 2.5rem 2rem;
@@ -446,8 +455,47 @@ button.ghost:hover {
 }
 
 .maze-panel {
+  width: min(1080px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.25rem, 2vw, 1.75rem);
+  align-items: stretch;
+  text-align: left;
+}
+
+.maze-panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(1rem, 2.5vw, 1.75rem);
+  justify-content: space-between;
   align-items: center;
-  text-align: center;
+}
+
+.maze-panel-copy {
+  flex: 1 1 320px;
+  min-width: 260px;
+}
+
+.maze-panel-copy h1 {
+  margin: 0 0 0.25rem;
+  font-size: clamp(1.85rem, 4vw, 2.5rem);
+}
+
+.maze-panel-copy p {
+  margin: 0;
+  color: #475569;
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.maze-panel-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+}
+
+.maze-panel-meta > div {
+  min-width: 120px;
 }
 
 .gameplay-views {
@@ -609,7 +657,7 @@ button.ghost:hover {
 .legend {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 1rem;
   margin-top: 1.5rem;
   flex-wrap: wrap;
@@ -646,6 +694,31 @@ button.ghost:hover {
   margin: 0;
   color: #475569;
   font-size: 0.9rem;
+}
+
+.maze-footer {
+  margin-top: auto;
+  padding-top: 1.25rem;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.elapsed-display {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.elapsed-display .status-value {
+  font-size: 1.35rem;
+}
+
+.elapsed-display .status-label {
+  letter-spacing: 0.1em;
 }
 
 @media (max-width: 960px) {
@@ -716,6 +789,62 @@ button.ghost:hover {
   margin-top: 1rem;
 }
 
+.complete-page {
+  min-height: 100vh;
+  padding: clamp(2.5rem, 6vw, 3.5rem);
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(280px, 360px);
+  gap: clamp(2rem, 5vw, 3rem);
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+}
+
+.complete-summary {
+  max-width: min(520px, 100%);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  text-align: center;
+  align-items: center;
+}
+
+.complete-summary h1 {
+  margin: 0;
+  font-size: clamp(2.1rem, 4.5vw, 2.75rem);
+}
+
+.complete-summary p {
+  margin: 0;
+  color: #334155;
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+.complete-summary .complete-actions {
+  justify-content: center;
+}
+
+.complete-leaderboard {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+
+.complete-leaderboard .card {
+  width: 100%;
+  max-width: 360px;
+  max-height: clamp(420px, 70vh, 520px);
+  margin: 0 auto;
+}
+
+.complete-leaderboard .leaderboard-wrapper {
+  max-height: none;
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+
 @media (max-width: 1100px) {
   .landing-leaderboard {
     right: clamp(1rem, 5vw, 3rem);
@@ -766,6 +895,53 @@ button.ghost:hover {
 
   .landing-start-card .primary {
     width: 100%;
+  }
+}
+
+@media (max-width: 1024px) {
+  .complete-page {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    align-content: center;
+  }
+
+  .complete-leaderboard {
+    width: min(440px, 100%);
+  }
+}
+
+@media (max-width: 768px) {
+  .play-page {
+    padding: clamp(1.5rem, 6vw, 2.5rem);
+  }
+
+  .maze-panel {
+    gap: 1.25rem;
+  }
+
+  .maze-panel-meta {
+    width: 100%;
+  }
+
+  .gameplay-views {
+    grid-template-columns: 1fr;
+  }
+
+  .mini-maze {
+    align-self: center;
+  }
+
+  .maze-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .complete-page {
+    padding: clamp(2rem, 8vw, 3rem);
+  }
+
+  .complete-summary {
+    width: min(520px, 100%);
   }
 }
 

@@ -389,98 +389,110 @@ function App() {
     )
   }
 
-  return (
-    <div className="page">
-      {view === 'playing' && (
-        <>
-          <header className="hero">
-            <h1>Navigate the maze</h1>
-            <p>Use the arrow keys to move forward and backward and to turn left or right. Reach the goal to log your finish time.</p>
-            <div className="status-grid">
+  if (view === 'playing') {
+    return (
+      <div className="play-page">
+        <section className="card maze-panel">
+          <header className="maze-panel-header">
+            <div className="maze-panel-copy">
+              <h1>Navigate the maze</h1>
+              <p>Use the arrow keys to move, turn, and find the goal before time slips away.</p>
+            </div>
+            <div className="maze-panel-meta">
               <div>
                 <span className="status-label">Player</span>
                 <span className="status-value">{nickname}</span>
-              </div>
-              <div>
-                <span className="status-label">Elapsed</span>
-                <span className="status-value">{formatDuration(elapsedMs)}</span>
               </div>
               <div>
                 <span className="status-label">Daily seed</span>
                 <span className="status-value">{dailyKey}</span>
               </div>
             </div>
+          </header>
+
+          <div className="maze-actions">
+            <button
+              type="button"
+              className={['ghost', 'toggle-solution', showSolution ? 'active' : ''].filter(Boolean).join(' ')}
+              onClick={() => setShowSolution((prev) => !prev)}
+            >
+              {showSolution ? 'Hide solution path' : 'Show solution path'}
+            </button>
+          </div>
+
+          <div className="gameplay-views">
+            <div className="first-person-panel">
+              <FirstPersonView maze={maze} player={player} />
+            </div>
+            <div className="mini-maze">
+              <p className="mini-maze-title">Maze overview</p>
+              <MazeBoard
+                maze={maze}
+                position={position}
+                size={MAZE_SIZE}
+                solutionCells={solutionCells}
+                showSolution={showSolution}
+                className="mini-maze-grid"
+              />
+            </div>
+          </div>
+
+          <div className="legend">
+            <span className="legend-item start">Start</span>
+            <span className="legend-item finish">Goal</span>
+            <span className="legend-item current">You</span>
+            {showSolution ? <span className="legend-item solution">Path preview</span> : null}
+          </div>
+
+          <p className="controls-hint">Keyboard: ↑/↓ move · ←/→ turn</p>
+
+          <div className="maze-footer">
+            <div className="elapsed-display">
+              <span className="status-label">Elapsed</span>
+              <span className="status-value">{formatDuration(elapsedMs)}</span>
+            </div>
             <button type="button" className="ghost" onClick={handleReturnHome}>
               Leave run
             </button>
-          </header>
+          </div>
+        </section>
+      </div>
+    )
+  }
 
-          <section className="card maze-panel">
-            <div className="maze-actions">
-              <button
-                type="button"
-                className={['ghost', 'toggle-solution', showSolution ? 'active' : ''].filter(Boolean).join(' ')}
-                onClick={() => setShowSolution((prev) => !prev)}
-              >
-                {showSolution ? 'Hide solution path' : 'Show solution path'}
-              </button>
-            </div>
-            <div className="gameplay-views">
-              <div className="first-person-panel">
-                <FirstPersonView maze={maze} player={player} />
-              </div>
-              <div className="mini-maze">
-                <p className="mini-maze-title">Maze overview</p>
-                <MazeBoard
-                  maze={maze}
-                  position={position}
-                  size={MAZE_SIZE}
-                  solutionCells={solutionCells}
-                  showSolution={showSolution}
-                  className="mini-maze-grid"
-                />
-              </div>
-            </div>
-            <div className="legend">
-              <span className="legend-item start">Start</span>
-              <span className="legend-item finish">Goal</span>
-              <span className="legend-item current">You</span>
-              {showSolution ? <span className="legend-item solution">Path preview</span> : null}
-            </div>
-            <p className="controls-hint">Keyboard: ↑/↓ move · ←/→ turn</p>
-          </section>
-        </>
-      )}
+  if (view === 'complete' && playerResult) {
+    return (
+      <div className="complete-page">
+        <section className="card complete-summary">
+          <h1>Maze complete!</h1>
+          <p>Great job escaping today&apos;s challenge.</p>
+          <div className="completion-callout">
+            <p>
+              <strong>{nickname}</strong> cleared the maze in <strong>{formatDuration(playerResult.durationMs)}</strong>.
+            </p>
+            <p>
+              Finish recorded at <strong>{formatUtcTime(playerResult.completedAt)}</strong> UTC — provisional rank #{' '}
+              {playerResult.rank}.
+            </p>
+          </div>
+          <div className="complete-actions">
+            <button type="button" className="primary" onClick={handleStartGame}>
+              Run it again
+            </button>
+            <button type="button" className="ghost" onClick={handleReturnHome}>
+              Back to lobby
+            </button>
+          </div>
+        </section>
 
-      {view === 'complete' && playerResult && (
-        <>
-          <header className="hero">
-            <h1>Maze complete!</h1>
-            <p>Great job escaping today&apos;s challenge.</p>
-            <div className="completion-callout">
-              <p>
-                <strong>{nickname}</strong> cleared the maze in <strong>{formatDuration(playerResult.durationMs)}</strong>.
-              </p>
-              <p>
-                Finish recorded at <strong>{formatUtcTime(playerResult.completedAt)}</strong> UTC — provisional rank #{' '}
-                {playerResult.rank}.
-              </p>
-            </div>
-            <div className="complete-actions">
-              <button type="button" className="primary" onClick={handleStartGame}>
-                Run it again
-              </button>
-              <button type="button" className="ghost" onClick={handleReturnHome}>
-                Back to lobby
-              </button>
-            </div>
-          </header>
-
+        <div className="complete-leaderboard">
           <Leaderboard title="Updated leaderboard" entries={leaderboard} highlight={playerResult} />
-        </>
-      )}
-    </div>
-  )
+        </div>
+      </div>
+    )
+  }
+
+  return null
 }
 
 export default App
