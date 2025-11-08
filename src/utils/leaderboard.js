@@ -18,6 +18,8 @@ const SAMPLE_NAMES = [
   'Pulse',
 ]
 
+const LEADERBOARD_LIMIT = 10
+
 export function buildDailyMockLeaderboard(dateString) {
   const seed = hashStringToSeed(`leaderboard-${dateString}`)
   const random = createSeededRandom(seed)
@@ -41,6 +43,6 @@ export function buildDailyMockLeaderboard(dateString) {
 
 export function insertLeaderboardEntry(entries, newEntry) {
   const updated = [...entries, newEntry]
-  updated.sort((a, b) => new Date(a.completedAt) - new Date(b.completedAt))
-  return updated
+  updated.sort((a, b) => new Date(a.completedAt) - new Date(b.completedAt) || a.durationMs - b.durationMs)
+  return updated.slice(0, LEADERBOARD_LIMIT)
 }

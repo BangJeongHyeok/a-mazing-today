@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { generateDailyMaze, solveMazePath } from './utils/maze'
 import { buildDailyMockLeaderboard, insertLeaderboardEntry } from './utils/leaderboard'
+import { fetchDailyLeaderboard, submitLeaderboardEntry } from './utils/leaderboardClient'
 import FirstPersonView from './components/FirstPersonView'
 import { movePlayerPosition, normalizeAngle } from './utils/movement'
 import './App.css'
@@ -146,7 +147,7 @@ function App() {
   const [position, setPosition] = useState({ row: 0, col: 0 })
   const [player, setPlayer] = useState(() => createInitialPlayerState())
   const [elapsedMs, setElapsedMs] = useState(0)
-  const [leaderboard, setLeaderboard] = useState(() => buildDailyMockLeaderboard(dailyKey))
+  const [leaderboard, setLeaderboard] = useState([])
   const [playerResult, setPlayerResult] = useState(null)
   const [showSolution, setShowSolution] = useState(false)
   const startTimeRef = useRef(null)
@@ -160,7 +161,7 @@ function App() {
 
   useEffect(() => {
     setMaze(generateDailyMaze(MAZE_SIZE, dailyKey))
-    setLeaderboard(buildDailyMockLeaderboard(dailyKey))
+    setLeaderboard([])
     setPosition({ row: 0, col: 0 })
     const initialPlayer = createInitialPlayerState()
     setPlayer(initialPlayer)
@@ -170,6 +171,31 @@ function App() {
     startTimeRef.current = null
     pressedKeysRef.current.clear()
     setView('landing')
+  }, [dailyKey])
+
+  useEffect(() => {
+    let isCancelled = false
+
+    async function loadLeaderboard() {
+      try {
+        const response = await fetchDailyLeaderboard()
+        if (!isCancelled && Array.isArray(response.entries)) {
+          setLeaderboard(response.entries)
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to load leaderboard from server', error)
+        if (!isCancelled) {
+          setLeaderboard(buildDailyMockLeaderboard(dailyKey))
+        }
+      }
+    }
+
+    loadLeaderboard()
+
+    return () => {
+      isCancelled = true
+    }
   }, [dailyKey])
 
   useEffect(() => {
@@ -185,7 +211,7 @@ function App() {
     return () => window.clearInterval(intervalId)
   }, [view])
 
-  const completeRun = useCallback(() => {
+  const completeRun = useCallback(async () => {
     if (view !== 'playing') {
       return
     }
@@ -196,25 +222,58 @@ function App() {
     startTimeRef.current = null
     setElapsedMs(durationMs)
 
+    const playerNickname = nickname.trim().slice(0, 32)
+
     const newEntry = {
-      nickname,
+      nickname: playerNickname,
       completedAt: finishedAtIso,
       durationMs,
     }
 
-    let computedRank = 0
-    setLeaderboard((prev) => {
-      const updated = insertLeaderboardEntry(prev, newEntry)
-      computedRank =
-        updated.findIndex(
-          (entry) => entry.nickname === newEntry.nickname && entry.completedAt === newEntry.completedAt,
-        ) + 1
-      return updated
-    })
+    try {
+      const response = await submitLeaderboardEntry(newEntry)
+      const entryFromResponse =
+        response && typeof response.entry === 'object' ? response.entry : newEntry
+      const entriesFromResponse = Array.isArray(response?.entries) ? response.entries : null
 
-    setPlayerResult({ ...newEntry, rank: computedRank })
-    setView((prev) => (prev === 'playing' ? 'complete' : prev))
-    pressedKeysRef.current.clear()
+      if (entriesFromResponse) {
+        setLeaderboard(entriesFromResponse)
+      }
+
+      const rankFromResponse = Number(response?.rank)
+      const fallbackRank = entriesFromResponse
+        ? entriesFromResponse.findIndex(
+            (entry) =>
+              entry.nickname === newEntry.nickname &&
+              entry.completedAt === newEntry.completedAt &&
+              entry.durationMs === newEntry.durationMs,
+          ) + 1
+        : 1
+
+      const resolvedRank = Number.isFinite(rankFromResponse) && rankFromResponse > 0 ? rankFromResponse : fallbackRank
+
+      setPlayerResult({ ...entryFromResponse, rank: resolvedRank })
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to submit leaderboard entry', error)
+      let computedRank = 0
+      setLeaderboard((prev) => {
+        const updated = insertLeaderboardEntry(prev, newEntry)
+        computedRank =
+          updated.findIndex(
+            (entry) =>
+              entry.nickname === newEntry.nickname &&
+              entry.completedAt === newEntry.completedAt &&
+              entry.durationMs === newEntry.durationMs,
+          ) + 1
+        return updated
+      })
+
+      setPlayerResult({ ...newEntry, rank: computedRank })
+    } finally {
+      setView((prev) => (prev === 'playing' ? 'complete' : prev))
+      pressedKeysRef.current.clear()
+    }
   }, [nickname, view])
 
   useEffect(() => {
